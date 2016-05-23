@@ -8,6 +8,7 @@ the chances of bitrot. Builders from the future, please try to build this with `
 
 To build:
 
+    $ bower install
     $ ./build.sh
 
 To bundle:
