@@ -1,7 +1,8 @@
 module Asteroids.Types where
 
+import Data.List
 import Data.Maybe
-import Audio.WebAudio.Types
+-- import Audio.WebAudio.Types
 
 data Phase = GameOver | Playing Ship | Crashing Ship Number | Respawning Number
 
@@ -27,7 +28,7 @@ type Asteroid = {
     , dx   :: Number
     , dy   :: Number
     , r    :: Number
-    , path :: [Number]
+    , path :: Array Number
     , spin :: Number
     , dir  :: Number
     }
@@ -47,24 +48,24 @@ type Controls = {
     , right  :: Boolean
     }
 
-type Sounds = {
-      context         :: AudioContext
-    , beepOscillator  :: OscillatorNode
-    , beepGain        :: GainNode
-    , shootBuffer     :: Maybe AudioBuffer
-    , explosionBuffer :: Maybe AudioBuffer
-    , masterGain      :: GainNode
-    }
+-- type Sounds = {
+--       context         :: AudioContext
+--     , beepOscillator  :: OscillatorNode
+--     , beepGain        :: GainNode
+--     , shootBuffer     :: Maybe AudioBuffer
+--     , explosionBuffer :: Maybe AudioBuffer
+--     , masterGain      :: GainNode
+--     }
 
 type State = {
       w         :: Number
     , h         :: Number
     , phase     :: Phase
-    , nships    :: Number
-    , score     :: Number
-    , asteroids :: [Asteroid]
-    , missiles  :: [Missile]
+    , nships    :: Int
+    , score     :: Int
+    , asteroids :: Array Asteroid
+    , missiles  :: Array Missile
     , controls  :: Controls
-    , sounds    :: Sounds
+--    , sounds    :: Sounds
     }
 

@@ -2,6 +2,9 @@
 
 module Asteroids.Main where
 
+
+import Prelude
+import DOM
 import Math
 import Debug.Trace
 import Control.Monad
@@ -11,18 +14,22 @@ import Control.Monad.Eff.Random
 import Control.Monad.ST
 import Graphics.Canvas
 
+
 import Data.Array
 import Data.Tuple
 import Data.Foldable
 import Data.Maybe.Unsafe
+import Data.Maybe
+import qualified Data.Int as I
+
 import Data.DOM.Simple.Types
 import Data.DOM.Simple.Window
 import Data.DOM.Simple.Events
 
-import Audio.WebAudio.Types
+-- import Audio.WebAudio.Types
 
 import Asteroids.Types
-import Asteroids.Sounds
+-- import Asteroids.Sounds
 
 --main :: forall eff. (Eff eff Unit)
 main = do
@@ -30,11 +37,11 @@ main = do
   h <- innerHeight globalWindow
 
   let ship = defaultShip w h
-      controls = { thrust: 0, left: false, right: false }
+      controls = { thrust: 0.0, left: false, right: false }
 
   asteroids <- replicateM 10 (randomAsteroid w h)
 
-  sounds <- makeSounds
+--  sounds <- makeSounds
   st <- newSTRef { w: w, h: h
                  , phase: GameOver
                  , nships: 3
@@ -42,40 +49,42 @@ main = do
                  , asteroids: asteroids
                  , missiles: [ ]
                  , controls: controls
-                 , sounds: sounds }
+                 --, sounds: sounds-
+                 }
 
   resize st
-  addUIEventListener UIResizeEvent (resize0 st) globalWindow
+  addUIEventListener ResizeEvent (resize0 st) globalWindow
 
   addKeyboardEventListener KeydownEvent (keydown st) globalWindow
   addKeyboardEventListener KeyupEvent (keyup st) globalWindow
   addKeyboardEventListener KeypressEvent (keypress st) globalWindow
 
-  setInterval globalWindow 33 $ tick st
-  startSounds st
+  setInterval globalWindow 33.0 $ tick st
+--  startSounds st
   return unit
 
 -- |Returns a new ship in the middle of the canvas.
 defaultShip :: Number -> Number -> Ship
-defaultShip w h = { x: w / 2, y: w / 2, dir: 0, dx: 0, dy: 0, r: 10 }
+defaultShip w h = { x: w / 2.0, y: w / 2.0, dir: 0.0, dx: 0.0, dy: 0.0, r: 10.0 }
 
 -- |The maximum speed we'll allow for a ship.
 maxSpeed = 6.0
 
-twoPi = 2 * pi
+twoPi :: Number
+twoPi = 2.0 * pi
 
 -- |Creates a randomly located asteroid somewhere on the canvas.
-randomAsteroid :: forall e. Number -> Number -> Eff ( random :: Random | e ) Asteroid
+randomAsteroid :: forall e. Number -> Number -> Eff ( random :: RANDOM | e ) Asteroid
 randomAsteroid w h = do
-  x  <- randomRange 0 w
-  y  <- randomRange 0 h
-  dx <- (*) <$> (randomRange 1 2) <*> randomSign
-  dy <- (*) <$> (randomRange 1 2) <*> randomSign
+  x  <- randomRange 0.0 w
+  y  <- randomRange 0.0 h
+  dx <- (*) <$> (randomRange 1.0 2.0) <*> randomSign
+  dy <- (*) <$> (randomRange 1.0 2.0) <*> randomSign
   path <- replicateM 12 (randomRange 0.7 1.1)
   spin <- randomRange (-0.1) 0.1
-  return { x: x, y: y, dx: dx, dy: dy, r: 50, path: path, spin: spin, dir: 0 }
+  return { x: x, y: y, dx: dx, dy: dy, r: 50.0, path: path, spin: spin, dir: 0.0 }
       where randomRange lo hi = (\n -> lo + n * (hi - lo)) <$> random
-            randomSign = (\n -> if n < 0.5 then (-1) else 1) <$> random
+            randomSign = (\n -> if n < 0.5 then (-1.0) else 1.0) <$> random
 
 -- |Thunk to attach resize to the ResizeEvent
 -- XXX WTF? Why do I need this?
@@ -89,14 +98,14 @@ resize st = do
   state <- readSTRef st
   w <- innerWidth globalWindow
   h <- innerHeight globalWindow
-  canvas <- getCanvasElementById "canvas"
+  (Just canvas) <- getCanvasElementById "canvas"
   setCanvasWidth w canvas
   setCanvasHeight h canvas
   modifySTRef st $ (\state -> state { w = w, h = h })
   return unit
 
 -- |Handles key presses for keys that can be held down.
-keydown :: forall s e. STRef s State -> DOMEvent -> Eff (st :: ST s, dom :: DOM | e) Unit
+keydown :: forall s e. STRef s State -> DOMEvent -> Eff (dom :: DOM, st :: ST s | e) Unit
 keydown st event = do
   code <- keyCode event
   modifySTRef st $ \state ->
@@ -110,7 +119,7 @@ keydown st event = do
   return unit
 
 -- |Handles key releases for keys that can be held down.
-keyup :: forall s e. STRef s State -> DOMEvent -> Eff (st :: ST s, dom :: DOM | e) Unit
+keyup :: forall s e. STRef s State -> DOMEvent -> Eff (dom :: DOM, st :: ST s | e) Unit
 keyup st event = do
   code <- keyCode event
   modifySTRef st $ \state ->
@@ -124,7 +133,7 @@ keyup st event = do
   return unit
 
 -- |Handles single key presses.
-keypress :: forall s e. STRef s State -> DOMEvent -> Eff (st :: ST s, wau :: WebAudio, dom :: DOM, random :: Random | e) Unit
+keypress :: forall s e. STRef s State -> DOMEvent -> Eff (dom :: DOM, st :: ST s,  random :: RANDOM | e) Unit
 keypress st event = do
   state <- readSTRef st
   k <- key event
@@ -132,17 +141,17 @@ keypress st event = do
     Playing ship | (k == "l" || k == "L") -> do
       let x = ship.x
           y = ship.y
-          dx = ship.dx + 8 * cos (ship.dir - pi/2)
-          dy = ship.dy + 8 * sin (ship.dir - pi/2)
-          missile = { x: x, y: y, dx: dx, dy: dy, r: 1, fuse: 50 }
+          dx = ship.dx + 8.0 * cos (ship.dir - pi/2.0)
+          dy = ship.dy + 8.0 * sin (ship.dir - pi/2.0)
+          missile = { x: x, y: y, dx: dx, dy: dy, r: 1.0, fuse: 50.0 }
 
       writeSTRef st $ state { missiles = (missile : state.missiles) }
-      playBufferedSound state.sounds state.sounds.shootBuffer
+--      playBufferedSound state.sounds state.sounds.shootBuffer
       return unit
 
     GameOver | (k == " ") -> do
       asteroids <- replicateM 10 (randomAsteroid state.w state.h)
-      writeSTRef st $ state { phase     = Respawning 11
+      writeSTRef st $ state { phase     = Respawning 11.0
                             , nships    = 3
                             , score     = 0
                             , asteroids = asteroids
@@ -152,7 +161,7 @@ keypress st event = do
     _ -> return unit
 
 -- |Handles a single animation frame.
-tick :: forall s e. STRef s State -> Eff (st :: ST s, random :: Random, canvas :: Canvas, wau :: WebAudio | e ) Unit
+tick :: forall s e. STRef s State -> Eff (st :: ST s, random :: RANDOM, canvas :: Canvas | e ) Unit
 tick st = do
   state <- readSTRef st
   state' <- update state
@@ -160,7 +169,7 @@ tick st = do
   render state
 
 -- |Updates the world state.
-update :: forall s e. State -> Eff (st :: ST s, random :: Random, wau :: WebAudio | e) State
+update :: forall s e. State -> Eff (st :: ST s, random :: RANDOM | e) State
 update state = do
   let -- These asteroids haven't been hit.
       asteroids = do
@@ -171,13 +180,13 @@ update state = do
       -- These asteroids have been hit: split 'em.
       asteroids' = do
         a <- state.asteroids
-        case filter (flip hittest $ a) state.missiles of
-          (m : ms) ->
-              if a.r >= 20
-              then let dx = m.dx / 10
-                       dy = m.dy / 10
-                   in [ a { dx = (dx + 1.5 * a.dy), dy = (dy + 1.5 * a.dx), r = a.r / 2 },
-                        a { dx = (dx - 1.5 * a.dy), dy = (dy - 1.5 * a.dx), r = a.r / 2 } ]
+        case uncons $ filter (flip hittest $ a) state.missiles of
+          Just { head: m, tail: ms } ->
+              if a.r >= 20.0
+              then let dx = m.dx / 10.0
+                       dy = m.dy / 10.0
+                   in [ a { dx = (dx + 1.5 * a.dy), dy = (dy + 1.5 * a.dx), r = a.r / 2.0 },
+                        a { dx = (dx - 1.5 * a.dy), dy = (dy - 1.5 * a.dx), r = a.r / 2.0 } ]
               else [ ]
 
           _ -> [ ]
@@ -189,7 +198,7 @@ update state = do
         m <- state.missiles
         guard $ not (any (hittest m) state.asteroids)
         let m' = burn m
-        guard $ m'.fuse > 0
+        guard $ m'.fuse > 0.0
         [move state.w state.h m']
 
   case state.phase of
@@ -197,9 +206,9 @@ update state = do
       let c = state.controls
 
           -- Update the ship based on any controls.
-          dir = ship.dir + (if c.right then (pi / 16) else 0.0) + (if c.left then (-pi / 16) else 0.0)
-          dx = clamp (-maxSpeed) maxSpeed (ship.dx + c.thrust * cos (dir - pi/2))
-          dy = clamp (-maxSpeed) maxSpeed (ship.dy + c.thrust * sin (dir - pi/2))
+          dir = ship.dir + (if c.right then (pi / 16.0) else 0.0) + (if c.left then (-pi / 16.0) else 0.0)
+          dx = clamp (-maxSpeed) maxSpeed (ship.dx + c.thrust * cos (dir - pi/2.0))
+          dy = clamp (-maxSpeed) maxSpeed (ship.dy + c.thrust * sin (dir - pi/2.0))
           x = (state.w + ship.x + ship.dx) % state.w
           y = (state.h + ship.y + ship.dy) % state.h
           ship' = ship { x = x, y = y, dx = dx, dy = dy, dir = dir }
@@ -208,7 +217,7 @@ update state = do
           points = sum $ do
             a <- state.asteroids
             guard $ any (flip hittest $ a) state.missiles
-            [if a.r >= 50 then 20 else if a.r >= 25 then 50 else 100]
+            [if a.r >= 50.0 then 20 else if a.r >= 25.0 then 50 else 100]
 
           -- Any blowed up asteroids?
           hits = do
@@ -219,9 +228,9 @@ update state = do
           -- Did the ship crash?
           crash = any (hittest ship') asteroids
 
-      when (crash || any id hits) $ playBufferedSound state.sounds state.sounds.explosionBuffer
+--      when (crash || any id hits) $ playBufferedSound state.sounds state.sounds.explosionBuffer
 
-      return $ state { phase     = if crash then Crashing ship' 0 else Playing ship'
+      return $ state { phase     = if crash then Crashing ship' 0.0 else Playing ship'
                      , nships    = if crash then state.nships - 1 else state.nships
                      , missiles  = missiles
                      , asteroids = asteroids''
@@ -230,28 +239,28 @@ update state = do
 
     Playing ship -> do
       asteroids <- replicateM 10 (randomAsteroid state.w state.h)
-      return $ state { phase     = Respawning 33
+      return $ state { phase     = Respawning 33.0
                      , asteroids = asteroids
                      , missiles  = [ ] }
 
     Crashing ship step -> do
       let ship' = ship { x = (state.w + ship.x + ship.dx) % state.w,
                          y = (state.h + ship.y + ship.dy) % state.h }
-          phase = if step > 33 then
-                      if state.nships > 0 then Respawning 33 else GameOver
-                  else Crashing ship' (step + 1)
+          phase = if step > 33.0 then
+                      if state.nships > 0 then Respawning 33.0 else GameOver
+                  else Crashing ship' (step + 1.0)
 
       return $ state { phase     = phase
                      , missiles  = missiles
                      , asteroids = asteroids'' }
 
-    Respawning n | n > 0 -> do
-      return $ state { phase = Respawning (n-1)
+    Respawning n | n > 0.0 -> do
+      return $ state { phase = Respawning (n-1.0)
                      , missiles  = missiles
                      , asteroids = asteroids'' }
 
     Respawning n -> do
-      let center = (defaultShip state.w state.h) { r = 40 }
+      let center = (defaultShip state.w state.h) { r = 40.0 }
           phase = if any (hittest center) state.asteroids
                   then Respawning n
                   else Playing (defaultShip state.w state.h)
@@ -291,26 +300,26 @@ move w h obj = obj { x = (w + obj.x + obj.dx) % w
 -- |Renders the current state.
 render :: forall e. State -> Eff ( canvas :: Canvas | e ) Unit
 render state = do
-  canvas <- getCanvasElementById "canvas"
+  Just canvas <- getCanvasElementById "canvas"
   ctx <- getContext2D canvas
   setFillStyle "#000000" ctx
-  fillPath ctx $ rect ctx { x: 0, y: 0, w: state.w, h: state.h }
+  fillPath ctx $ rect ctx { x: 0.0, y: 0.0, w: state.w, h: state.h }
 
   -- Draw the score
   save ctx
   setFillStyle "#ffffff" ctx
   setFont "16px Hyperspace" ctx
-  fillText ctx (show state.score) 10 20
+  fillText ctx (show state.score) 10.0 20.0
   restore ctx
 
   -- Draw the remaining ships
-  forE 1 state.nships $ \i -> do
-      let ship = (defaultShip 0 0) { x = 20 * i, y = 40 }
+  forE 1.0 (I.toNumber state.nships) $ \i -> do
+      let ship = (defaultShip 0.0 0.0) { x = 20.0 * i, y = 40.0 }
       renderShip ctx ship "#ffffff" false
       return unit
 
   case state.phase of
-    Playing ship    -> renderShip ctx ship "#ffffff" (state.controls.thrust /= 0)
+    Playing ship    -> renderShip ctx ship "#ffffff" (state.controls.thrust /= 0.0)
     Respawning _    -> renderShip ctx (defaultShip state.w state.h) "#555555" false
     Crashing ship i -> renderCrash ctx ship i
     GameOver        -> renderGameOver ctx state.w state.h
@@ -325,20 +334,20 @@ renderShip ctx ship color engines = do
   save ctx
   translate { translateX: ship.x, translateY: ship.y } ctx
   rotate ship.dir ctx
-  setLineWidth 1 ctx
+  setLineWidth 1.0 ctx
   setStrokeStyle color ctx
   beginPath ctx
-  moveTo ctx 0 (-10)
-  lineTo ctx (-7) 10
-  lineTo ctx 0 8
-  lineTo ctx 7 10
-  lineTo ctx 0 (-10)
+  moveTo ctx 0.0 (-10.0)
+  lineTo ctx (-7.0) 10.0
+  lineTo ctx 0.0 8.0
+  lineTo ctx 7.0 10.0
+  lineTo ctx 0.0 (-10.0)
   stroke ctx
 
   when engines $ do
-    moveTo ctx (-4) 11
-    lineTo ctx 0 15
-    lineTo ctx 4 11
+    moveTo ctx (-4.0) 11.0
+    lineTo ctx 0.0 15.0
+    lineTo ctx 4.0 11.0
     stroke ctx
     return unit
 
@@ -351,42 +360,42 @@ renderCrash ctx ship i = do
   save ctx
   translate { translateX: ship.x, translateY: ship.y } ctx
   rotate ship.dir ctx
-  setLineWidth 1 ctx
+  setLineWidth 1.0 ctx
   setStrokeStyle "#ffffff" ctx
 
   save ctx
   translate { translateX: -i, translateY: -i } ctx
-  rotate (i * pi / 60) ctx
+  rotate (i * pi / 60.0) ctx
   beginPath ctx
-  moveTo ctx 0 (-10)
-  lineTo ctx (-7) 10
+  moveTo ctx 0.0 (-10.0)
+  lineTo ctx (-7.0) 10.0
   stroke ctx
   restore ctx
 
   save ctx
   translate { translateX: i, translateY: -i } ctx
-  rotate ((-i) * pi / 30) ctx
+  rotate ((-i) * pi / 30.0) ctx
   beginPath ctx
-  moveTo ctx 0 (-10)
-  lineTo ctx 7 10
+  moveTo ctx 0.0 (-10.0)
+  lineTo ctx 7.0 10.0
   stroke ctx
   restore ctx
 
   save ctx
   translate { translateX: -i, translateY: i } ctx
-  rotate ((-i) * pi / 20) ctx
+  rotate ((-i) * pi / 20.0) ctx
   beginPath ctx
-  moveTo ctx (-7) 10
-  lineTo ctx 0 8
+  moveTo ctx (-7.0) 10.0
+  lineTo ctx 0.0 8.0
   stroke ctx
   restore ctx
 
   save ctx
   translate { translateX: i, translateY: i } ctx
-  rotate (i * pi / 15) ctx
+  rotate (i * pi / 15.0) ctx
   beginPath ctx
-  moveTo ctx 0 8
-  lineTo ctx 7 10
+  moveTo ctx 0.0 8.0
+  lineTo ctx 7.0 10.0
   stroke ctx
   restore ctx
 
@@ -399,15 +408,19 @@ renderAsteroid :: forall e. Context2D -> Unit -> Asteroid -> Eff ( canvas :: Can
 renderAsteroid ctx _ asteroid = do
   save ctx
 
-  setLineWidth 1 ctx
+  setLineWidth 1.0 ctx
   translate { translateX: asteroid.x, translateY: asteroid.y } ctx
   rotate asteroid.dir ctx
 
   setStrokeStyle "#ffffff" ctx
   beginPath ctx
 
-  let n = length asteroid.path
-      steps = map ((*) (twoPi / n)) (1 .. n)
+  let n :: Int
+      n = length asteroid.path
+      foo :: Int -> Number
+      foo i = I.toNumber i * (twoPi / (I.toNumber n))
+      steps :: Array Number
+      steps = map foo (1 .. n)
       theta = fromJust $ last steps
       off = fromJust $ last asteroid.path
 
@@ -429,7 +442,7 @@ renderMissile :: forall e. Context2D -> Unit -> Missile -> Eff ( canvas :: Canva
 renderMissile ctx _ missile = do
   save ctx
   setFillStyle "#ffffff" ctx
-  fillPath ctx $ arc ctx { x: missile.x, y: missile.y, r: 2, start: 0, end: twoPi }
+  fillPath ctx $ arc ctx { x: missile.x, y: missile.y, r: 2.0, start: 0.0, end: twoPi }
   restore ctx
   return unit
 
@@ -439,15 +452,15 @@ renderGameOver ctx w h = do
   save ctx
   setFillStyle "#ffffff" ctx
 
-  centerText "Game Over" 64 (-40)
-  centerText "Controls" 20 0
-  centerText "A = Rotate Left, S = Rotate Right" 14 20
-  centerText "K = Thrust, L = Fire" 14 40
-  centerText "Press the space bar to start" 16 120
+  centerText "Game Over" 64.0 (-40.0)
+  centerText "Controls" 20.0 0.0
+  centerText "A = Rotate Left, S = Rotate Right" 14.0 20.0
+  centerText "K = Thrust, L = Fire" 14.0 40.0
+  centerText "Press the space bar to start" 16.0 120.0
 
   restore ctx
   return unit
       where centerText text pixels y = do
               setFont ((show pixels) ++ "px Hyperspace") ctx
               metrics <- measureText ctx text
-              fillText ctx text (w / 2 - metrics.width / 2) (y + h / 2)
+              fillText ctx text (w / 2.0 - metrics.width / 2.0) (y + h / 2.0)

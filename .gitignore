@@ -3,3 +3,6 @@
 bower_components
 node_modules
 html/asteroids.js
+output/
+.DS_Store
+npm-debug.log
