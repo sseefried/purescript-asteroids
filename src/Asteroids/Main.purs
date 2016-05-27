@@ -26,6 +26,8 @@ import Data.DOM.Simple.Types
 import Data.DOM.Simple.Window
 import Data.DOM.Simple.Events
 
+import Debug.Trace
+
 -- import Audio.WebAudio.Types
 
 import Asteroids.Types
@@ -107,12 +109,13 @@ resize st = do
 -- |Handles key presses for keys that can be held down.
 keydown :: forall s e. STRef s State -> DOMEvent -> Eff (dom :: DOM, st :: ST s | e) Unit
 keydown st event = do
+--  preventDefault event
   code <- keyCode event
   modifySTRef st $ \state ->
       let controls = case code of
-                       65  -> state.controls { left = true }
-                       83  -> state.controls { right = true }
-                       75  -> state.controls { thrust = 0.5 }
+                       37  -> state.controls { left = true }
+                       39  -> state.controls { right = true }
+                       38  -> state.controls { thrust = 0.5 }
                        _   -> state.controls
       in state { controls = controls }
 
@@ -124,9 +127,9 @@ keyup st event = do
   code <- keyCode event
   modifySTRef st $ \state ->
       let controls = case code of
-                       65  -> state.controls { left = false }
-                       83  -> state.controls { right = false }
-                       75  -> state.controls { thrust = 0.0 }
+                       37  -> state.controls { left = false }
+                       39  -> state.controls { right = false }
+                       38  -> state.controls { thrust = 0.0 }
                        _   -> state.controls
       in state { controls = controls }
 
@@ -136,9 +139,9 @@ keyup st event = do
 keypress :: forall s e. STRef s State -> DOMEvent -> Eff (dom :: DOM, st :: ST s,  random :: RANDOM | e) Unit
 keypress st event = do
   state <- readSTRef st
-  k <- key event
+  k <- keyCode event
   case state.phase of
-    Playing ship | (k == "l" || k == "L") -> do
+    Playing ship | (k == 32) -> do
       let x = ship.x
           y = ship.y
           dx = ship.dx + 8.0 * cos (ship.dir - pi/2.0)
@@ -149,7 +152,7 @@ keypress st event = do
 --      playBufferedSound state.sounds state.sounds.shootBuffer
       return unit
 
-    GameOver | (k == " ") -> do
+    GameOver | (k == 32) -> do
       asteroids <- replicateM 10 (randomAsteroid state.w state.h)
       writeSTRef st $ state { phase     = Respawning 11.0
                             , nships    = 3
@@ -454,8 +457,8 @@ renderGameOver ctx w h = do
 
   centerText "Game Over" 64.0 (-40.0)
   centerText "Controls" 20.0 0.0
-  centerText "A = Rotate Left, S = Rotate Right" 14.0 20.0
-  centerText "K = Thrust, L = Fire" 14.0 40.0
+  centerText "Left arrow = rotate left, Right arrow = rotate right" 14.0 20.0
+  centerText "Up arrow = thrust, Space = fire" 14.0 40.0
   centerText "Press the space bar to start" 16.0 120.0
 
   restore ctx
