@@ -1,0 +1,21 @@
+<html>
+<head>
+
+<style>
+  @font-face {
+    font-family: "Hyperspace";
+    src: url("Hyperspace.ttf") format("truetype");
+  }
+</style>
+
+<script type="text/javascript" src="require1k.js"></script>
+<script type="text/javascript">
+    R("../output/Asteroids.Main", function(err, exports) {
+      exports.main();
+    });
+</script>
+</head>
+<body>
+  <canvas id="canvas" width="640" height="480"></canvas>
+</body>
+</html>

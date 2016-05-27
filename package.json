@@ -9,7 +9,8 @@
     "http-server":      "*"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./build.sh --any"
   },
   "author": "Chris Waterson <waterson@maubi.net>",
   "license": "MIT"
